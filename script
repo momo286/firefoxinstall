@@ -1,20 +1,31 @@
+reconf(){
+	find "$HOME/.mozilla/firefox/" -name "prefs.js" | while read f
+	do
+		if ! grep -q "$1" "$f"
+		then
+			echo "user_pref(\"$1\", $2);" >> "$f"
+		else
+			#dumbest workaround for browser.uiCustomization.state antislashes
+			a=$(echo $2 | sed "s|\\\|\\\\\\\\\\\|g")
+			sed -i 's|^user_pref("'$1'",.*);|user_pref("'$1'", '$a');|' "$f"
+		fi
+	done
+}
+reconf "extensions.autoDisableScopes" "0"
+
 iAddon() {
-  xpi=$(curl "$1" | grep -o "https://[a-z./0-9_+-]*.xpi") || exit 1
-  temp=$(mktemp)
-  wget "$xpi" --output-document="$temp"
-  id=$(unzip -p "$temp" "manifest.json" | grep '"id": "' | sed -r 's|.*"(.*)".*|\1|')
-  find "$HOME/.mozilla/firefox/" -name "extensions" -type d | while read f
-  do
-    if ! test -f "$f/$id.xpi"
-    then
-      ln "$temp" "$f/$id.xpi"
-    fi
-  done
-  rm "$temp"
+	xpi=$(curl "$1" | grep -o "https://[a-z./0-9_+-]*.xpi") || exit 1
+	temp=$(mktemp)
+	wget "$xpi" --output-document="$temp"
+	id=$(unzip -p "$temp" "manifest.json" | grep '"id": "' | sed -r 's|.*"(.*)".*|\1|')
+	find "$HOME/.mozilla/firefox/" -name "extensions" -type d | while read f
+	do
+		if ! test -f "$f/$id.xpi"
+		then
+			ln "$temp" "$f/$id.xpi"
+		fi
+	done
+	rm "$temp"
 }
 
-#tests
-#I don't care about cookies
-iAddon "https://addons.mozilla.org/en-US/firefox/addon/i-dont-care-about-cookies/"
-#RSS preview
-iAddon "https://addons.mozilla.org/en-US/firefox/addon/rsspreview/"
+iAddon $1
